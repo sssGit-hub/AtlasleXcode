@@ -21,16 +21,35 @@ jobs:
     - name: Install fastlane
       run: sudo gem install fastlane -N
 
-    - name: Build and upload to TestFlight
+    - name: Build archive
+      run: |
+        xcodebuild \
+          -scheme Atlasle \
+          -configuration Release \
+          -sdk iphoneos \
+          -archivePath build/Atlasle.xcarchive \
+          archive
+
+    - name: Export IPA
+      run: |
+        xcodebuild \
+          -exportArchive \
+          -archivePath build/Atlasle.xcarchive \
+          -exportPath build \
+          -exportOptionsPlist ExportOptions.plist
+
+    - name: Upload to TestFlight
       env:
         APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
         APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
       run: |
+        echo "$APP_STORE_CONNECT_API_KEY" > AuthKey.p8
+
         fastlane deliver \
-          --api_key_path <(echo "$APP_STORE_CONNECT_API_KEY") \
+          --api_key_path AuthKey.p8 \
           --api_key_id "$APP_STORE_CONNECT_API_KEY_ID" \
           --api_key_issuer_id "$APP_STORE_CONNECT_API_ISSUER_ID" \
+          --ipa build/Atlasle.ipa \
           --skip_screenshots \
-          --skip_metadata \
-          --ipa "$(xcodebuild -scheme Atlasle -configuration Release -sdk iphoneos -archivePath build/Atlasle.xcarchive archive | grep -o 'build/.*\.xcarchive')/Products/Applications/Atlasle.app"
+          --skip_metadata
