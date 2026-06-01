@@ -1,27 +1,27 @@
 name: iOS Build & Upload
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Set up Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: "16.4"
+      run: sudo xcode-select -s /Applications/Xcode_16.4.app
 
-    - name: Install fastlane
-      run: sudo gem install fastlane -N
+    - name: Create API key file
+      run: |
+        echo "$APP_STORE_CONNECT_API_KEY" > AuthKey.p8
 
     - name: Build archive
+      env:
+        APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
       run: |
         xcodebuild \
           -scheme Atlasle \
@@ -29,6 +29,9 @@ jobs:
           -sdk iphoneos \
           -archivePath build/Atlasle.xcarchive \
           -allowProvisioningUpdates \
+          -authenticationKeyPath AuthKey.p8 \
+          -authenticationKeyID $APP_STORE_CONNECT_API_KEY_ID \
+          -authenticationKeyIssuerID $APP_STORE_CONNECT_API_KEY_ISSUER_ID \
           archive
 
     - name: Export IPA
@@ -43,15 +46,11 @@ jobs:
     - name: Upload to TestFlight
       env:
         APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-        APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+        APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
         APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
       run: |
-        echo "$APP_STORE_CONNECT_API_KEY" > AuthKey.p8
-
-        fastlane deliver \
-          --api_key_path AuthKey.p8 \
-          --api_key_id "$APP_STORE_CONNECT_API_KEY_ID" \
-          --api_key_issuer_id "$APP_STORE_CONNECT_API_ISSUER_ID" \
-          --ipa build/Atlasle.ipa \
-          --skip_screenshots \
-          --skip_metadata
+        xcrun altool --upload-app \
+          -f build/Atlasle.ipa \
+          -t ios \
+          --apiKey $APP_STORE_CONNECT_API_KEY_ID \
+          --apiIssuer $APP_STORE_CONNECT_API_KEY_ISSUER_ID
