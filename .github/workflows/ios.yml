@@ -28,6 +28,7 @@ jobs:
           -configuration Release \
           -sdk iphoneos \
           -archivePath build/Atlasle.xcarchive \
+          -allowProvisioningUpdates \
           archive
 
     - name: Export IPA
@@ -36,7 +37,8 @@ jobs:
           -exportArchive \
           -archivePath build/Atlasle.xcarchive \
           -exportPath build \
-          -exportOptionsPlist ExportOptions.plist
+          -exportOptionsPlist ExportOptions.plist \
+          -allowProvisioningUpdates
 
     - name: Upload to TestFlight
       env:
